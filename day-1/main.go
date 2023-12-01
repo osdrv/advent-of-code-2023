@@ -16,8 +16,7 @@ func main() {
 
 	lines := readLines(fi)
 
-	sum1 := 0
-	sum2 := 0
+	sum1, sum2 := 0, 0
 
 	for _, line := range lines {
 		f, l := -1, -1
@@ -40,15 +39,12 @@ func main() {
 					fs = ix
 					f = v_1 + 1
 				}
-
-			} else {
-				continue
-			}
-			if ix := strings.LastIndex(line, dig); ix != -1 {
+				ix = strings.LastIndex(line, dig)
 				if ix > ls {
 					ls = ix
 					l = v_1 + 1
 				}
+
 			}
 		}
 		debugf("line: %s, f: %d, l: %d", line, f, l)
