@@ -1,15 +1,6 @@
 package main
 
-import (
-	"os"
-)
-
 func main() {
-	f, err := os.Open("INPUT-TST")
-	noerr(err)
-	defer f.Close()
-
-	lines := readLines(f)
-
-	printf("file data: %+v", lines)
+	lines := input()
+	debugf("file data: %+v", lines)
 }
