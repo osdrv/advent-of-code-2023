@@ -43,10 +43,23 @@ var (
 
 var (
 	DEBUG = os.Getenv("DEBUG") == "1"
+	INPUT = os.Getenv("INPUT")
 )
 
 type Number interface {
 	byte | int | int32 | int64 | uint32 | uint64 | float64
+}
+
+func input() []string {
+	if len(INPUT) == 0 {
+		fatalf("`INPUT` var is missing")
+	}
+
+	f, err := os.Open(INPUT)
+	noerr(err)
+	defer f.Close()
+
+	return readLines(f)
 }
 
 func noerr(err error) {
@@ -290,6 +303,11 @@ func reverseIntArr(arr []int) []int {
 // Deprecated: please use `reverseNumArr` instead.
 func reverseByteArr(arr []byte) []byte {
 	return reverseByteArr(arr)
+}
+
+func reverseStr(s string) string {
+	rs := []rune(s)
+	return string(reverseNumArr(rs))
 }
 
 func grepNumArr[N Number](arr []N, grepfn func(N) bool) []N {
@@ -725,4 +743,83 @@ func Scanf(input string, tmpl string, args ...any) {
 			argix++
 		}
 	}
+}
+
+const (
+	EOW  rune = 0
+	ROOT      = 255
+)
+
+type TrieNode struct {
+	r     rune
+	nodes map[rune]*TrieNode
+}
+
+func NewTrieNode(r rune) *TrieNode {
+	return &TrieNode{
+		r:     r,
+		nodes: make(map[rune]*TrieNode),
+	}
+}
+
+type Trie struct {
+	head *TrieNode
+}
+
+func NewTrie() *Trie {
+	return &Trie{
+		head: NewTrieNode(ROOT),
+	}
+}
+
+func (t *Trie) Add(word string) {
+	ptr := t.head
+	for _, r := range word {
+		if _, ok := ptr.nodes[r]; !ok {
+			ptr.nodes[r] = NewTrieNode(r)
+		}
+		ptr = ptr.nodes[r]
+	}
+	ptr.nodes[EOW] = NewTrieNode(EOW)
+}
+
+func (t *Trie) AddAll(words ...string) {
+	for _, word := range words {
+		t.Add(word)
+	}
+}
+
+type mtch struct {
+	ix   int
+	tptr *TrieNode
+}
+
+func FirstIndexOfAny(s string, words ...string) (string, int) {
+	t := NewTrie()
+	t.AddAll(words...)
+	ms := make([]mtch, 0, 1)
+	for ix, r := range s {
+		ms = append(ms, mtch{ix, t.head})
+		newms := make([]mtch, 0, 1)
+		for _, m := range ms {
+			if next, ok := m.tptr.nodes[r]; ok {
+				if _, ok := next.nodes[EOW]; ok {
+					return s[m.ix : ix+1], m.ix
+				}
+				newms = append(newms, mtch{m.ix, next})
+			}
+		}
+		ms = newms
+	}
+	return "", -1
+}
+
+func LastIndexOfAny(s string, words ...string) (string, int) {
+	sinv := reverseStr(s)
+	winv := make([]string, 0, len(words))
+	for _, word := range words {
+		winv = append(winv, reverseStr(word))
+	}
+	sres, ix := FirstIndexOfAny(sinv, winv...)
+	return reverseStr(sres), len(s) - ix - 1
 }

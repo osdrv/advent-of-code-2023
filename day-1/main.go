@@ -1,54 +1,47 @@
 package main
 
-import (
-	"os"
-	"strings"
-)
-
 var digs = []string{
-	"one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+	"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+}
+
+var digsmap = make(map[string]int)
+
+func init() {
+	for ix, dig := range digs {
+		digsmap[dig] = ix
+	}
+}
+
+func parseIntWithDigs(dig string) int {
+	if ix, ok := digsmap[dig]; ok {
+		return ix
+	}
+	return parseInt(dig)
 }
 
 func main() {
-	fi, err := os.Open("INPUT")
-	noerr(err)
-	defer fi.Close()
-
-	lines := readLines(fi)
-
+	lines := input()
 	sum1, sum2 := 0, 0
 
 	for _, line := range lines {
-		f, l := -1, -1
-		fs, ls := ALOT, -ALOT
-		for ix, c := range []byte(line) {
-			if isNumber(c) {
-				if fs == ALOT {
-					f = int(c - '0')
-					fs = ix
-				}
-				l = int(c - '0')
-				ls = ix
-			}
-		}
-		sum1 += f*10 + l
-		debugf("fs: %d, ls: %d", fs, ls)
-		for v_1, dig := range digs {
-			if ix := strings.Index(line, dig); ix != -1 {
-				if ix < fs {
-					fs = ix
-					f = v_1 + 1
-				}
-				ix = strings.LastIndex(line, dig)
-				if ix > ls {
-					ls = ix
-					l = v_1 + 1
-				}
+		mf, fsalt := FirstIndexOfAny(line, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+		ml, lsalt := LastIndexOfAny(line, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+		assert(fsalt != -1, "pattern found")
+		assert(lsalt != -1, "pattern found")
 
-			}
-		}
-		debugf("line: %s, f: %d, l: %d", line, f, l)
-		sum2 += f*10 + l
+		sum1 += parseInt(mf)*10 + parseInt(ml)
+	}
+
+	for _, line := range lines {
+		mf, fsalt := FirstIndexOfAny(line, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+		ml, lsalt := LastIndexOfAny(line, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+
+		debugf("line: %s, mf: %s(%d), ml: %s(%d)", line, mf, fsalt, ml, lsalt)
+
+		assert(fsalt != -1, "pattern found")
+		assert(lsalt != -1, "pattern found")
+
+		sum2 += parseIntWithDigs(mf)*10 + parseIntWithDigs(ml)
 	}
 
 	printf("sum1: %d", sum1)
