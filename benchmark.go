@@ -31,20 +31,28 @@ func getDayFrom(dir fs.FileInfo) int {
 	return day
 }
 
-func benchmark(dir fs.FileInfo, nRuns int, execCmd string) []time.Duration {
+func benchmark(dir fs.FileInfo, nRuns int, execCmd string, args ...string) []time.Duration {
 	os.Chdir(dir.Name())
 	defer os.Chdir("..")
 
 	runs := make([]time.Duration, 0, nRuns)
 
+	if err := exec.Command("make", "build").Run(); err != nil {
+		panic(err)
+	}
+
 	for run := 0; run < nRuns; run++ {
 		start := time.Now()
-		cmd := exec.Command(execCmd)
+		cmd := exec.Command(execCmd, args...)
 		if err := cmd.Run(); err != nil {
 			panic(err)
 		}
 		elapsed := time.Now().Sub(start)
 		runs = append(runs, elapsed)
+	}
+
+	if err := exec.Command("make", "clean").Run(); err != nil {
+		panic(err)
 	}
 
 	sort.Slice(runs, func(i, j int) bool {
@@ -77,7 +85,7 @@ func getLOC(dir fs.FileInfo, fNames ...string) int {
 			panic(err)
 		}
 		loc := len(bytes.Split(data, []byte{'\n'}))
-		fMap[file.Name()] = loc-1
+		fMap[file.Name()] = loc - 1
 	}
 
 	totalLoc := 0
@@ -122,7 +130,7 @@ func main() {
 
 	for _, dir := range dayDirs {
 		fmt.Printf("=== Benchmarking %s ===\n", dir.Name())
-		elapsed := benchmark(dir, BENCH_RUNS, "make")
+		elapsed := benchmark(dir, BENCH_RUNS, "make", "run-build")
 		fmt.Printf("elapsed: %+v\n", elapsed)
 		fmt.Printf(
 			"p0: %d, p50: %d, p70: %d, p90: %d, p100: %d\n",
