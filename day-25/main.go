@@ -1,142 +1,173 @@
 package main
 
 import (
-	"fmt"
 	"strings"
+
+	_ "net/http/pprof"
 )
 
-func computeSegments(W map[string]map[string]bool, exclude map[[2]string]bool) [][]string {
-	vis := make(map[string]bool)
-	for from, tos := range W {
-		vis[from] = false
-		for to := range tos {
-			vis[to] = false
-		}
-	}
-
-	var visit func(v string) []string
-	visit = func(v string) []string {
-		res := []string{v}
-		vis[v] = true
-		for to := range W[v] {
-			if vis[to] {
-				continue
-			}
-			if exclude[[2]string{v, to}] || exclude[[2]string{to, v}] {
-				continue
-			}
-			res = append(res, visit(to)...)
-		}
-		return res
-	}
-
-	segms := make([][]string, 0, 1)
-	for v, didVis := range vis {
-		if didVis {
-			continue
-		}
-		segms = append(segms, visit(v))
-	}
-
-	return segms
+type Graph struct {
+	numVx int
+	VN    map[string]int
+	VS    []int
+	ES    [][]int
 }
 
-func graphviz(W map[string][]string) string {
-	var b strings.Builder
-	b.WriteString("graph G {\n")
-	for from, tos := range W {
-		for _, to := range tos {
-			b.WriteString(fmt.Sprintf("  %s -- %s\n", from, to))
-		}
-	}
-	b.WriteString("}")
+func NewGraph(vx map[string]struct{}) *Graph {
+	numVx := len(vx)
+	vn := make(map[string]int, numVx)
+	vs := make([]int, numVx)
+	es := makeIntField(numVx, numVx)
 
-	return b.String()
+	for v := range vx {
+		vix := len(vn)
+		vn[v] = vix
+		vs[vix] = 1
+	}
+
+	return &Graph{
+		numVx: numVx,
+		VN:    vn,
+		VS:    vs,
+		ES:    es,
+	}
+}
+
+func (g *Graph) AddEdge(u, v string) {
+	uix, vix := g.VN[u], g.VN[v]
+	g.ES[uix][vix] = 1
+	g.ES[vix][uix] = 1
+}
+
+func (g *Graph) contract(uix, vix int) {
+	for wix := 0; wix < len(g.ES); wix++ {
+		if g.VS[wix] == 0 {
+			continue
+		}
+		g.ES[uix][wix] += g.ES[vix][wix]
+		g.ES[wix][uix] += g.ES[wix][vix]
+		g.ES[wix][vix] = 0
+		g.ES[vix][wix] = 0
+	}
+	g.ES[uix][vix] = 0
+	g.VS[vix] = 0
+	g.numVx--
+}
+
+func (g *Graph) minCutPhase(six int) (int, int, int) {
+	A := make([]int, len(g.VS))
+	A[six] = 1
+
+	W := make([]int, 0, len(g.VS))
+	V := make([]int, 0, len(g.VS))
+	cand := make([]int, len(g.VS))
+	copy(cand, g.VS)
+	cand[six] = 0
+	nCand := g.numVx - 1
+	V = append(V, six)
+
+	for nCand > 0 {
+		maxW, maxVix := -ALOT, -1
+		numCand := 0
+		for vix := 0; vix < len(cand); vix++ {
+			if cand[vix] == 0 {
+				continue
+			}
+			numCand++
+			w := 0
+			for aix := 0; aix < len(A); aix++ {
+				if A[aix] > 0 {
+					w += g.ES[vix][aix]
+				}
+			}
+			if w > maxW {
+				maxW = w
+				maxVix = vix
+			}
+		}
+		A[maxVix] = 1
+		cand[maxVix] = 0
+		V = append(V, maxVix)
+		W = append(W, maxW)
+		nCand--
+	}
+
+	return V[len(V)-2], V[len(V)-1], W[len(W)-1]
+}
+
+func (g *Graph) MinCut(start string) (int, []int) {
+	six := g.VN[start]
+	AL := make(map[int][]int)
+	debugf("g VS len: %d", len(g.VS))
+	minWeight := ALOT
+	var cutPartition []int
+	for g.numVx > 1 {
+		u, v, cutWeight := g.minCutPhase(six)
+		if cutWeight < minWeight {
+			minWeight = cutWeight
+			cutPartition = expand(AL, v)
+		}
+		g.contract(u, v)
+		if _, ok := AL[u]; !ok {
+			AL[u] = make([]int, 0, 1)
+		}
+		AL[u] = append(AL[u], v)
+	}
+
+	return minWeight, cutPartition
+}
+
+func expand(M map[int][]int, v int) []int {
+	res := []int{v}
+	if _, ok := M[v]; !ok {
+		return res
+	}
+	for _, vv := range M[v] {
+		res = append(res, expand(M, vv)...)
+	}
+	return res
+}
+
+func cpMap[K comparable, V any](src map[K]V) map[K]V {
+	cp := make(map[K]V, len(src))
+	for k, v := range src {
+		cp[k] = v
+	}
+	return cp
 }
 
 func main() {
 	lines := input()
 
-	W := make(map[string]map[string]bool)
-	ES := make([][2]string, 0, 1)
+	var start string
+
+	VS := make(map[string]struct{})
+	ES := make(map[string][]string)
 
 	for _, line := range lines {
 		ss := strings.SplitN(line, ": ", 2)
 		from := ss[0]
+		VS[from] = struct{}{}
 		tos := strings.Split(ss[1], " ")
-		if _, ok := W[from]; !ok {
-			W[from] = make(map[string]bool)
-		}
 		for _, to := range tos {
-			ES = append(ES, [2]string{from, to})
-			W[from][to] = true
-			if _, ok := W[to]; !ok {
-				W[to] = make(map[string]bool)
-			}
-			W[to][from] = true
+			VS[to] = struct{}{}
+		}
+		ES[from] = tos
+		// we do not care about the choice of the active vertex
+		if len(start) == 0 {
+			start = from
+		}
+	}
+	G := NewGraph(VS)
+	for from, tos := range ES {
+		for _, to := range tos {
+			G.AddEdge(from, to)
 		}
 	}
 
-	var isReachableWithin func(from, to string, rang int, path map[string]bool) bool
-	isReachableWithin = func(from, to string, rang int, path map[string]bool) bool {
-		path[from] = true
-		defer func() {
-			delete(path, from)
-		}()
-		for next := range W[from] {
-			if path[next] {
-				continue
-			}
-			if W[next][to] {
-				return true
-			}
-			if rang > 1 {
-				if isReachableWithin(next, to, rang-1, path) {
-					return true
-				}
-			}
-		}
-		return false
-	}
+	numV := len(G.VS)
 
-	cand := make([][2]string, 0, 3)
-Edge:
-	for _, e := range ES {
-		from, to := e[0], e[1]
-		if isReachableWithin(from, to, 2, map[string]bool{}) {
-			continue Edge
-		}
-		cand = append(cand, e)
-	}
-
-	debugf("len(ES)=%d", len(ES))
-
-	debugf("candidates (%d): %+v", len(cand), cand)
-
-	ss := computeSegments(W, map[[2]string]bool{
-		{"tvj", "cvx"}: true,
-		{"fsv", "spx"}: true,
-		{"kdk", "nct"}: true,
-	})
-
-	assert(len(ss) == 2, "2 partitions")
-	printf("res= %d", len(ss[0])*len(ss[1]))
-
-	// Cand:
-	//
-	//	for i := 0; i < len(cand); i++ {
-	//		for j := i + 1; j < len(cand); j++ {
-	//			debugf("i: %d, j: %d, k: *", i, j)
-	//			for k := j + 1; k < len(cand); k++ {
-	//				segments := computeSegments(W, map[[2]string]bool{
-	//					cand[i]: true, cand[j]: true, cand[k]: true,
-	//				})
-	//				if len(segments) == 2 {
-	//					res := len(segments[0]) * len(segments[1])
-	//					printf("res: %d", res)
-	//					break Cand
-	//				}
-	//			}
-	//		}
-	//	}
+	minCut, part := G.MinCut(start)
+	printf("min cut: %d", minCut)
+	printf("the result: %d", len(part)*(numV-len(part)))
 }
