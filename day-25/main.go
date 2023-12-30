@@ -55,26 +55,26 @@ func (g *Graph) contract(uix, vix int) {
 }
 
 func (g *Graph) minCutPhase(six int) (int, int, int) {
-	A := make([]int, len(g.VS))
-	A[six] = 1
+	var W_1, V_1, V_2 int
 
-	W := make([]int, 0, len(g.VS))
-	V := make([]int, 0, len(g.VS))
-	cand := make([]int, len(g.VS))
+	N := len(g.VS)
+	A := make([]int, N)
+	A[six] = 1
+	cand := make([]int, N)
 	copy(cand, g.VS)
 	cand[six] = 0
 	nCand := g.numVx - 1
-	V = append(V, six)
+	V_2 = six
+
+	var maxW, maxVix, w int
 
 	for nCand > 0 {
-		maxW, maxVix := -ALOT, -1
-		numCand := 0
+		maxW, maxVix = -ALOT, -1
 		for vix := 0; vix < len(cand); vix++ {
 			if cand[vix] == 0 {
 				continue
 			}
-			numCand++
-			w := 0
+			w = 0
 			for aix := 0; aix < len(A); aix++ {
 				if A[aix] > 0 {
 					w += g.ES[vix][aix]
@@ -87,12 +87,13 @@ func (g *Graph) minCutPhase(six int) (int, int, int) {
 		}
 		A[maxVix] = 1
 		cand[maxVix] = 0
-		V = append(V, maxVix)
-		W = append(W, maxW)
 		nCand--
+		V_2 = V_1
+		V_1 = maxVix
+		W_1 = maxW
 	}
 
-	return V[len(V)-2], V[len(V)-1], W[len(W)-1]
+	return V_2, V_1, W_1
 }
 
 func (g *Graph) MinCut(start string) (int, []int) {
