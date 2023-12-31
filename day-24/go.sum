@@ -1,2 +1,2 @@
-github.com/mitchellh/go-z3 v0.0.0-20191228203228-4cbedeba863f h1:I2Rx8N5cDzVL4amj76w9F+fRS5zvZdmMyphvPMA+HJQ=
-github.com/mitchellh/go-z3 v0.0.0-20191228203228-4cbedeba863f/go.mod h1:SCzzTuqNJ1cVcftwEustt+uZcgDQhp0lJnWQPU3a3Lw=
+github.com/osdrv/go-z3 v0.0.0-20231231085336-6c99c029e41c h1:Z3BUf87ZV7m2DaZvdVGYUS82vZOc1m23ckgDsJ41Fo4=
+github.com/osdrv/go-z3 v0.0.0-20231231085336-6c99c029e41c/go.mod h1:6GlP6Mq1caO7x+VUxbMdxV3vb6/TtzBUYcpDk3n/TPg=

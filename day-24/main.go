@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mitchellh/go-z3"
+	"github.com/osdrv/go-z3"
 )
 
 func parseInt64(s string) int64 {
@@ -116,15 +116,14 @@ func main() {
 	vy := ctx.Const(ctx.Symbol("vy"), ctx.IntSort())
 	vz := ctx.Const(ctx.Symbol("vz"), ctx.IntSort())
 
-	// no idea why, but first 3 dots bailed out immediately
 	for i := 0; i < 3; i++ {
 		t := ctx.Const(ctx.Symbol(fmt.Sprintf("t%d", i)), ctx.IntSort())
-		a := ctx.Int(int(H[i][0][0]), ctx.IntSort())
-		b := ctx.Int(int(H[i][0][1]), ctx.IntSort())
-		c := ctx.Int(int(H[i][0][2]), ctx.IntSort())
-		va := ctx.Int(int(H[i][1][0]), ctx.IntSort())
-		vb := ctx.Int(int(H[i][1][1]), ctx.IntSort())
-		vc := ctx.Int(int(H[i][1][2]), ctx.IntSort())
+		a := ctx.Int64(H[i][0][0], ctx.IntSort())
+		b := ctx.Int64(H[i][0][1], ctx.IntSort())
+		c := ctx.Int64(H[i][0][2], ctx.IntSort())
+		va := ctx.Int64(H[i][1][0], ctx.IntSort())
+		vb := ctx.Int64(H[i][1][1], ctx.IntSort())
+		vc := ctx.Int64(H[i][1][2], ctx.IntSort())
 
 		s.Assert(t.Gt(ctx.Int(0, ctx.IntSort())))
 		s.Assert(x.Add(vx.Mul(t)).Eq(a.Add(va.Mul(t))))
@@ -137,10 +136,12 @@ func main() {
 	}
 
 	m := s.Model()
+	asg := m.Assignments()
 	sum := m.Eval(x.Add(y.Add(z)))
 	m.Close()
 
-	printf("sum: %d", sum.Int())
+	debugf("assignments: %+v", asg)
+	printf("sum: %d", sum.Int64())
 }
 
 func GCD64(a, b int64) int64 {
